@@ -2,17 +2,14 @@
 
 ## Description
 
-ELKTAIL is a tool that generates a tail-like stream from a filebeat index
-in elasticsearch.
+ELKTAIL is a tool that generates a tail-like stream from Elasticsearch logs.
 
-Currently it depends that the the index template has the following fields:
+The tool works with any Elasticsearch log index and uses the Elastic Common Schema (ECS) fields:
 
-* fields.project.keyword
-* fields.process_type.keyword
-* fields.environment.keyword
+* service.name
+* service.type
 
-**Future versions:** Won't have this requirement since it will allow KQL 
-language directly.
+You can configure which index pattern to query (e.g., `filebeat-*`, `logstash-*`, `app-logs-*`, etc.).
 
 ## Installation
 
@@ -70,11 +67,12 @@ The first time this tool gets executed (or if the configuration file is
 missing) the initial configuration process kicks in. The following
 parameters will be requested:
 
-* host: url or ip of the elasticsearch that contains the filebeat indexes
+* host: url or ip of the elasticsearch server
 * username: user that has permissions to connect to the given elasticsearch
 * password: password of the username
 * scheme: it's really REALLY weird the this parameter be anything by https
 * port: port where elasticsearch is listening
+* index pattern: pattern to match log indices (default: `filebeat-*`)
 
 ```bash
 $ elktail
@@ -86,14 +84,16 @@ username: username
 password: MySecretPassword
 scheme (HIGLY recommended https): https
 port: 9243
+index pattern (default: filebeat-*): logstash-*
 elktail configured
 $ cat $HOME/.config/elktail/config.ini
-i[default]
+[default]
 host = 127.0.0.1
 username = username
 password = MySecretPassword
 scheme = https
 port = 9243
+index_pattern = logstash-*
 ```
 
 The password will be stored in **plain text** so make sure it has 0400
@@ -107,29 +107,55 @@ Usage: elktail [options]
 
 Options:
   -h, --help            show this help message and exit
-  -p PROJECT, --project=PROJECT
-                        [optional] select the project that logs will be
-                        displayed
-  -t PROCESS_TYPE, --process_type=PROCESS_TYPE
-                        [optional] select the process type that logs will be
-                        displayed
-  -e ENVIRONMENT, --environment=ENVIRONMENT
-                        [optional] environment
+  -n SERVICE_NAME, --service-name=SERVICE_NAME
+                        [optional] filter by service name (queries
+                        service.name field)
+  -t SERVICE_TYPE, --service-type=SERVICE_TYPE
+                        [optional] filter by service type (queries
+                        service.type field)
+  -i INDEX_PATTERN, --index=INDEX_PATTERN
+                        [optional] index pattern to query (e.g., logstash-*,
+                        my-logs-*)
 ```
 
 * Arguments can be used at the same time or no arguments at all
-* Arguments works as **and**
+* Arguments works as **and** filters
 
 ### No arguments
 
-Executing elktail with no arguments, will **tailf** everything in the filebeat
-indexes.
+Executing elktail with no arguments will **tail** everything from the configured
+index pattern.
 
 ```
 $ elktail
 2020-06-30T21:27:32.227Z :: [2020-06-30 21:27:32,227: INFO/MainProcess] Received task: tasks.s3_campaigns.monitor_incoming_files.monitor[acc61ad7-5890-41d6-8fa0-93e5547df61a]
 2020-06-30T21:27:47.289Z :: [2020-06-30 21:27:47,289: INFO/ForkPoolWorker-66] Task tasks.reports.check_scheduled_reports.check_something[668d7f0e-7a86-4cb1-9e55-6197a8a1a6a3] succeeded in 0.006264386989641935s: True
 2020-06-30T21:27:05.222Z :: [2020-06-30 21:27:05,222: INFO/ForkPoolWorker-287] Task tasks.reports.check_scheduled_reports.check_something[2c55f42e-2bbf-4448-9445-5f16a90338bd] succeeded in 0.003620134957600385s: True
+```
+
+### Filter by service name
+
+```
+$ elktail -n "api-gateway"
+```
+
+### Filter by service type
+
+```
+$ elktail -t "web"
+```
+
+### Combine filters
+
+```
+$ elktail -n "payment-service" -t "backend"
+```
+
+### Use a different index pattern
+
+```
+$ elktail -i "app-logs-*"
+$ elktail -i "logs-2025.01.*" -n "my-service"
 ```
 
 

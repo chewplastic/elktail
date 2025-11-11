@@ -61,10 +61,12 @@ def get_search_body(iso_date, project=None, process_type=None,
     return body
 
 
-def search(es, body):
-    now = datetime.now()
+def search(es, body, index_pattern=None):
+    if index_pattern is None:
+        config = configuration.get_config()
+        index_pattern = config['index_pattern']
     return es.search_template(
         body,
-        index=f"filebeat-{now.year}.{now.month:02}.{now.day:02}"
+        index=index_pattern
     )
 

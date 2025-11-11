@@ -9,9 +9,9 @@ import json
 from elktail import elastic
 
 
-def get_lines(client, iso_date, project, process_type, environment):
+def get_lines(client, iso_date, project, process_type, environment, index_pattern=None):
     body = elastic.get_search_body(iso_date, project, process_type, environment)
-    response = elastic.search(client, body)
+    response = elastic.search(client, body, index_pattern)
     new_ts = None
     lines = list()
     for doc in response['hits']['hits']:
@@ -32,7 +32,7 @@ def show_lines(lines):
         print(line)
 
 
-def mainloop(project=None, process_type=None, environment=None):
+def mainloop(project=None, process_type=None, environment=None, index_pattern=None):
     client = elastic.connect()
     iso_date = datetime.utcnow().isoformat()
     last = None
@@ -42,7 +42,8 @@ def mainloop(project=None, process_type=None, environment=None):
             iso_date,
             project,
             process_type,
-            environment
+            environment,
+            index_pattern
         )
         show_lines(lines)
 
@@ -65,10 +66,13 @@ if __name__ == "__main__":
         help="[optional] select the process type that logs will be displayed")
     parser.add_option("-e", "--environment", dest="environment",
         help="[optional] environment")
+    parser.add_option("-i", "--index", dest="index_pattern",
+        help="[optional] index pattern to query (e.g., logstash-*, my-logs-*)")
     (options, args) = parser.parse_args()
 
     mainloop(
        project=options.project,
        process_type=options.process_type,
-       environment=options.environment
+       environment=options.environment,
+       index_pattern=options.index_pattern
     )

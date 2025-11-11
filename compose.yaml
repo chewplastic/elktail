@@ -1,0 +1,12 @@
+services:
+  elktail:
+    build: .
+    container_name: elktail
+    stdin_open: true
+    tty: true
+    volumes:
+      # Mount config directory to persist configuration
+      - ./config:/root/.config/elktail
+    # Uncomment and modify to pass command-line arguments by default
+    # command: ["-n", "my-service", "-t", "web", "-i", "logs-*"]
+    restart: unless-stopped

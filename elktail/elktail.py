@@ -48,8 +48,11 @@ def parse_timestamp(timestamp_str):
         raise ValueError(f"Unable to parse timestamp: {timestamp_str}")
 
 
-def get_lines(client, iso_date, service_name, service_type, index_pattern=None):
-    body = elastic.get_search_body(iso_date, service_name, service_type)
+def get_lines(client, iso_date, service_name, service_type, index_pattern=None, message=None):
+    # Calculate max_date as current time minus 60 seconds (to account for ingestion delay)
+    max_date = (datetime.now(timezone.utc) - timedelta(seconds=60)).isoformat()
+
+    body = elastic.get_search_body(iso_date, service_name, service_type, max_date, message)
     response = elastic.search(client, body, index_pattern)
     max_ts = None
     lines = list()
@@ -57,8 +60,11 @@ def get_lines(client, iso_date, service_name, service_type, index_pattern=None):
         ts = doc['_source']['@timestamp']
         if "message" in doc['_source']:
             message = doc['_source']['message']
-            lines.append(f"{ts} :: {message}")
-
+            service_type = doc['_source'].get('service', {}).get('type', 'unknown')
+            service_name = doc['_source'].get('service', {}).get('name', 'unknown')
+            lines.append(f"{ts} :: [{service_name}.{service_type}] :: {message}")
+        else:
+            lines.append(f"{ts} :: {json.dumps(doc['_source'])}")
         # Track the maximum timestamp
         current_ts = parse_timestamp(doc['_source']['@timestamp'])
         if max_ts is None or current_ts > max_ts:
@@ -76,9 +82,9 @@ def show_lines(lines):
         print(line)
 
 
-def mainloop(service_name=None, service_type=None, index_pattern=None):
+def mainloop(service_name=None, service_type=None, index_pattern=None, message=None):
     client = elastic.connect()
-    iso_date = datetime.now(timezone.utc).isoformat()
+    iso_date = (datetime.now(timezone.utc) - timedelta(seconds=120)).isoformat()
     last = None
     while True:
         iso_date, lines = get_lines(
@@ -86,7 +92,8 @@ def mainloop(service_name=None, service_type=None, index_pattern=None):
             iso_date,
             service_name,
             service_type,
-            index_pattern
+            index_pattern,
+            message
         )
         show_lines(lines)
 
@@ -109,10 +116,13 @@ if __name__ == "__main__":
         help="[optional] filter by service type (queries service.type field)")
     parser.add_option("-i", "--index", dest="index_pattern",
         help="[optional] index pattern to query (e.g., logstash-*, my-logs-*)")
+    parser.add_option("-m", "--message", dest="message",
+        help="[optional] filter by message content with wildcards (e.g., '*error*', '*auth*failed*')")
     (options, args) = parser.parse_args()
 
     mainloop(
        service_name=options.service_name,
        service_type=options.service_type,
-       index_pattern=options.index_pattern
+       index_pattern=options.index_pattern,
+       message=options.message
     )

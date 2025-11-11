@@ -13,6 +13,26 @@ You can configure which index pattern to query (e.g., `filebeat-*`, `logstash-*`
 
 ## Installation
 
+### Docker (Recommended)
+
+The easiest way to run elktail is using Docker:
+
+```bash
+# Clone the repository
+git clone git@github.com:chewplastic/elktail.git
+cd elktail/
+
+# Create config directory
+mkdir -p config
+
+# Run with filters (eg: auth.webservice in log-* index containing a message field with "*sql*")
+docker compose run --rm elktail -n "auth" -t "webservice" -i "log-*" -m "sql"
+```
+
+The configuration will be saved in `./config/config.ini` and persisted across container restarts.
+
+### Manual Installation
+
 The tools gets installed globally on your system so it requires root
 permissions. Its final destination will be /usr/local/elktail.
 

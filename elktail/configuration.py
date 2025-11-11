@@ -23,11 +23,11 @@ def get_config():
     config.read(config_path)
     return {
         'host': config['default']['host'],
-        'username': config['default']['username'],
-        'scheme': config['default']['scheme'],
-        'password': config['default']['password'],
-        'port': int(config['default']['port']),
-        'index_pattern': config['default'].get('index_pattern', 'filebeat-*')
+        'username': '',
+        'scheme': 'http',
+        'password': '',
+        'port': 9200,
+        'index_pattern': config['default'].get('index_pattern', 'log-*')
     }
 
 
@@ -46,19 +46,11 @@ def config_creator(config_path):
             raise
 
     host = input("elasticsearch host: ")
-    username = input("username: ")
-    password = input("password: ")
-    scheme = input("scheme (HIGLY recommended https): ")
-    port = input("port: ")
-    index_pattern = input("index pattern (default: filebeat-*): ") or "filebeat-*"
+    index_pattern = input("index pattern (default: log-*): ") or "log-*"
 
     config = configparser.RawConfigParser()
     config.add_section("default")
     config.set("default", "host", host)
-    config.set("default", "username", username)
-    config.set("default", "password", password)
-    config.set("default", "scheme", scheme)
-    config.set("default", "port", port)
     config.set("default", "index_pattern", index_pattern)
 
     with open(config_path, 'w') as configfile:

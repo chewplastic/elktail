@@ -15,7 +15,11 @@ def connect():
     )
 
 
-def get_search_body(iso_date, service_name=None, service_type=None):
+def get_search_body(iso_date, service_name=None, service_type=None, max_date=None, message=None):
+    timestamp_range = {"gt": f"{iso_date}Z"}
+    if max_date is not None:
+        timestamp_range["lte"] = f"{max_date}Z"
+
     body = {
         "source": {
             "size": 1000,
@@ -24,9 +28,7 @@ def get_search_body(iso_date, service_name=None, service_type=None):
                     "must": [
                         {
                             "range": {
-                                "@timestamp": {
-                                    "gt": f"{iso_date}Z"
-                                }
+                                "@timestamp": timestamp_range
                             }
                         }
                     ]
@@ -47,6 +49,14 @@ def get_search_body(iso_date, service_name=None, service_type=None):
             {
                 'match': {
                     'service.type': service_type
+                }
+            }
+        )
+    if message is not None:
+        body['source']['query']['bool']['must'].append(
+            {
+                'wildcard': {
+                    'message': message
                 }
             }
         )

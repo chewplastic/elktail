@@ -15,8 +15,7 @@ def connect():
     )
 
 
-def get_search_body(iso_date, project=None, process_type=None,
-                    environment=None):
+def get_search_body(iso_date, service_name=None, service_type=None):
     body = {
         "source": {
             "size": 1000,
@@ -35,27 +34,19 @@ def get_search_body(iso_date, project=None, process_type=None,
             }
         }
     }
-    if project is not None:
+    if service_name is not None:
         body['source']['query']['bool']['must'].append(
             {
                 'match': {
-                    'fields.project.keyword': project
+                    'service.name': service_name
                 }
             }
         )
-    if process_type is not None:
+    if service_type is not None:
         body['source']['query']['bool']['must'].append(
             {
                 'match': {
-                    'fields.process_type.keyword': process_type
-                }
-            }
-        )
-    if environment is not None:
-        body['source']['query']['bool']['must'].append(
-            {
-                'match': {
-                    'fields.environment.keyword': environment
+                    'service.type': service_type
                 }
             }
         )
@@ -74,6 +65,6 @@ def search(es, body, index_pattern=None):
 
     return es.search_template(
         body,
-        index=f"filebeat-{now.year}.{now.month:02}.{now.day:02}"
+        index=index_pattern
     )
 

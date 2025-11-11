@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from optparse import OptionParser
 import json
+import re
 
 from elktail import elastic
 
@@ -50,13 +51,15 @@ def parse_timestamp(timestamp_str):
 def get_lines(client, iso_date, service_name, service_type, index_pattern=None):
     body = elastic.get_search_body(iso_date, service_name, service_type)
     response = elastic.search(client, body, index_pattern)
-    max_ts = None
+    new_ts = None
     lines = list()
     for doc in response['hits']['hits']:
         ts = doc['_source']['@timestamp']
         if "message" in doc['_source']:
             message = doc['_source']['message']
             lines.append(f"{ts} :: {message}")
+        new_ts = parse_timestamp(doc['_source']['@timestamp']) + timedelta(milliseconds=400)
+        new_ts = new_ts.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
         # Track the maximum timestamp
         current_ts = parse_timestamp(doc['_source']['@timestamp'])
@@ -75,7 +78,7 @@ def show_lines(lines):
         print(line)
 
 
-def mainloop(project=None, process_type=None, environment=None):
+def mainloop(service_name=None, service_type=None, index_pattern=None):
     client = elastic.connect()
     iso_date = datetime.now(timezone.utc).isoformat()
     last = None
@@ -83,9 +86,9 @@ def mainloop(project=None, process_type=None, environment=None):
         iso_date, lines = get_lines(
             client,
             iso_date,
-            project,
-            process_type,
-            environment
+            service_name,
+            service_type,
+            index_pattern
         )
         show_lines(lines)
 
@@ -102,16 +105,16 @@ def mainloop(project=None, process_type=None, environment=None):
 if __name__ == "__main__":
 
     parser = OptionParser()
-    parser.add_option("-p", "--project", dest="project",
-        help="[optional] select the project that logs will be displayed")
-    parser.add_option("-t", "--process_type", dest="process_type",
-        help="[optional] select the process type that logs will be displayed")
-    parser.add_option("-e", "--environment", dest="environment",
-        help="[optional] environment")
+    parser.add_option("-n", "--service-name", dest="service_name",
+        help="[optional] filter by service name (queries service.name field)")
+    parser.add_option("-t", "--service-type", dest="service_type",
+        help="[optional] filter by service type (queries service.type field)")
+    parser.add_option("-i", "--index", dest="index_pattern",
+        help="[optional] index pattern to query (e.g., logstash-*, my-logs-*)")
     (options, args) = parser.parse_args()
 
     mainloop(
-       project=options.project,
-       process_type=options.process_type,
-       environment=options.environment
+       service_name=options.service_name,
+       service_type=options.service_type,
+       index_pattern=options.index_pattern
     )

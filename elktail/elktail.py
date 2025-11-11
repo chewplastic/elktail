@@ -51,15 +51,13 @@ def parse_timestamp(timestamp_str):
 def get_lines(client, iso_date, service_name, service_type, index_pattern=None):
     body = elastic.get_search_body(iso_date, service_name, service_type)
     response = elastic.search(client, body, index_pattern)
-    new_ts = None
+    max_ts = None
     lines = list()
     for doc in response['hits']['hits']:
         ts = doc['_source']['@timestamp']
         if "message" in doc['_source']:
             message = doc['_source']['message']
             lines.append(f"{ts} :: {message}")
-        new_ts = parse_timestamp(doc['_source']['@timestamp']) + timedelta(milliseconds=400)
-        new_ts = new_ts.strftime("%Y-%m-%dT%H:%M:%S.%f")
 
         # Track the maximum timestamp
         current_ts = parse_timestamp(doc['_source']['@timestamp'])

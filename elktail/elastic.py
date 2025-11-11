@@ -1,4 +1,5 @@
 import configparser
+import json
 from elasticsearch import Elasticsearch
 from datetime import datetime
 
@@ -18,14 +19,14 @@ def get_search_body(iso_date, project=None, process_type=None,
                     environment=None):
     body = {
         "source": {
-            "size": 10000,
+            "size": 1000,
             "query": {
                 "bool": {
                     "must": [
                         {
                             "range": {
                                 "@timestamp": {
-                                    "gte": f"{iso_date}Z"
+                                    "gt": f"{iso_date}Z"
                                 }
                             }
                         }
@@ -61,8 +62,16 @@ def get_search_body(iso_date, project=None, process_type=None,
     return body
 
 
-def search(es, body):
-    now = datetime.now()
+def search(es, body, index_pattern=None):
+    if index_pattern is None:
+        config = configuration.get_config()
+        index_pattern = config['index_pattern']
+
+    # print(f"\n=== Elasticsearch Query ===")
+    # print(f"Index: {index_pattern}")
+    # print(f"Body:\n{json.dumps(body, indent=2)}")
+    # print("===========================\n")
+
     return es.search_template(
         body,
         index=f"filebeat-{now.year}.{now.month:02}.{now.day:02}"
